@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Arcade Shooting Gallery</title>
+    
+    <!-- PWA Manifest & Theme -->
+    <link rel="manifest" href="data:application/manifest+json;charset=utf-8,{
+        %22name%22: %22Arcade Shooting Gallery%22,
+        %22short_name%22: %22ShootingGallery%22,
+        %22start_url%22: %22.%22,
+        %22display%22: %22standalone%22,
+        %22background_color%22: %22%234a90e2%22,
+        %22theme_color%22: %22%23ff4757%22,
+        %22icons%22: [{
+            %22src%22: %22data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23ff4757'/%3E%3Ccircle cx='32' cy='32' r='20' fill='none' stroke='white' stroke-width='4'/%3E%3Ccircle cx='32' cy='32' r='8' fill='%23f1c40f'/%3E%3Cline x1='32' y1='4' x2='32' y2='18' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3Cline x1='32' y1='46' x2='32' y2='60' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3Cline x1='4' y1='32' x2='18' y2='32' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3Cline x1='46' y1='32' x2='60' y2='32' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E%22,
+            %22sizes%22: %22192x192 512x512%22,
+            %22type%22: %22image/svg+xml%22
+        }]
+    }">
+    <meta name="theme-color" content="#ff4757">
+
+    <!-- Custom Favicon / App Icon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23ff4757'/><circle cx='32' cy='32' r='20' fill='none' stroke='white' stroke-width='4'/><circle cx='32' cy='32' r='8' fill='%23f1c40f'/><line x1='32' y1='4' x2='32' y2='18' stroke='white' stroke-width='4' stroke-linecap='round'/><line x1='32' y1='46' x2='32' y2='60' stroke='white' stroke-width='4' stroke-linecap='round'/><line x1='4' y1='32' x2='18' y2='32' stroke='white' stroke-width='4' stroke-linecap='round'/><line x1='46' y1='32' x2='60' y2='32' stroke='white' stroke-width='4' stroke-linecap='round'/></svg>">
+    
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #4a90e2; 
+            font-family: 'Courier New', Courier, monospace;
+        }
+        #gameCanvas {
+            display: block;
+            background: linear-gradient(to bottom, #4a90e2, #b0e0e6);
+            cursor: crosshair;
+        }
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            font-size: 16px;
+            font-weight: bold;
+            color: #111;
+            pointer-events: none;
+            text-shadow: 1px 1px #fff;
+            z-index: 5;
+            display: none; 
+        }
+        .ui-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        #topCenterPanel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            background: rgba(255, 255, 255, 0.45);
+            padding: 6px 12px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        #targetTracker {
+            display: flex;
+            gap: 4px;
+            justify-content: center;
+            align-items: center;
+        }
+        .tracker-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 1px solid #333;
+            background-color: #f1c40f; 
+            transition: background-color 0.2s;
+        }
+        .tracker-dot.hit {
+            background-color: #7f8c8d; 
+        }
+        #livesDisplay {
+            font-size: 14px;
+            color: #c0392b;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+        #ammoDisplay {
+            font-size: 13px;
+            color: #2c3e50;
+            font-weight: bold;
+            margin-top: 2px;
+        }
+
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            font-size: 13px;
+            color: #222;
+            pointer-events: none;
+            text-shadow: 1px 1px #fff;
+            z-index: 5;
+            display: none;
+        }
+        #modeSelectScreen, #startScreen, #bannerScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.75);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            z-index: 10;
+        }
+        #startScreen, #bannerScreen {
+            display: none;
+        }
+        #bannerScreen {
+            background: rgba(0,0,0,0.5);
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 20px;
+            background-color: #ff4757;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px #b32d3a;
+            margin-top: 15px;
+            transition: transform 0.1s;
+        }
+        button:active {
+            box-shadow: 0 2px #b32d3a;
+            transform: translateY(2px);
+        }
+        #installAppBtn {
+            background-color: #2ed573;
+            box-shadow: 0 4px #218c53;
+            display: block; /* Always Visible */
+        }
+        #installAppBtn:active {
+            box-shadow: 0 2px #218c53;
+        }
+        .menu-btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 20px;
+            width: 100%;
+            max-width: 300px;
+            align-items: center;
+        }
+        .menu-btn-group button {
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui">
+        <div class="ui-group">
+            <div>Score: <span id="score">0</span></div>
+        </div>
+
+        <div id="topCenterPanel">
+            <div style="font-size: 11px; color: #2c3e50;"><span id="modeTitleLabel">Level</span> <span id="level">1</span></div>
+            <div id="targetTracker"></div>
+            <div id="livesDisplay">❤️ ❤️ ❤️</div>
+            <div id="ammoDisplay">Bullets Left: <span id="bulletsLeft">2</span>/2</div>
+        </div>
+
+        <div class="ui-group" style="text-align: right;">
+            <div>Hits: <span id="hitsCount">0</span>/10</div>
+        </div>
+    </div>
+
+    <div id="instructions">Hit both targets with 1 shot or reach every 5th level to gain a heart back!</div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Main Splash Screen with Choices & Always-Visible Install Button -->
+    <div id="modeSelectScreen">
+        <h1>ARCADE SHOOTING GALLERY</h1>
+        <p>Choose your shooting game mode below:</p>
+        <div class="menu-btn-group">
+            <button id="duckHuntBtn">Duck Hunt</button>
+            <button id="clayPigeonBtn">Clay Pigeon Shooting</button>
+            <button id="installAppBtn">📲 Install App</button>
+        </div>
+    </div>
+
+    <div id="startScreen">
+        <h1 id="startScreenTitle">GAME MODE</h1>
+        <p id="startScreenDesc">Wooded firing range: random dynamic entries.<br>Missing an un-shot target costs a heart!<br>Clear 10 targets to advance levels.</p>
+        <button id="startBtn">START SHOOTING</button>
+    </div>
+
+    <div id="bannerScreen">
+        <h1 id="bannerTitle">LEVEL 1 COMPLETE!</h1>
+        <p id="bannerSub">Get ready for Level 2...</p>
+        <button id="nextLevelBtn">CONTINUE</button>
+    </div>
+
+    <script>
+        // PWA Installation & Service Worker Logic
+        let deferredPrompt;
+        const installAppBtn = document.getElementById('installAppBtn');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+        });
+
+        installAppBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    installAppBtn.style.display = 'none';
+                }
+                deferredPrompt = null;
+            } else {
+                alert("To install this app:\n\n• On Chrome/Edge (Desktop): Click the install icon (monitor with down arrow) in your address bar.\n• On iOS/Android (Mobile): Open your browser menu and tap 'Add to Home Screen'.");
+            }
+        });
+
+        window.addEventListener('appinstalled', () => {
+            installAppBtn.style.display = 'none';
+            deferredPrompt = null;
+        });
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                const swCode = `
+                    self.addEventListener('install', (e) => { e.waitUntil(self.skipWaiting()); });
+                    self.addEventListener('activate', (e) => { e.waitUntil(self.clients.claim()); });
+                    self.addEventListener('fetch', (e) => { e.respondWith(fetch(e.request).catch(() => caches.match(e.request))); });
+                `;
+                const blob = new Blob([swCode], { type: 'text/javascript' });
+                const swUrl = URL.createObjectURL(blob);
+                navigator.serviceWorker.register(swUrl).catch(() => {});
+            });
+        }
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const levelEl = document.getElementById('level');
+        const hitsCountEl = document.getElementById('hitsCount');
+        const livesDisplay = document.getElementById('livesDisplay');
+        const bulletsLeftEl = document.getElementById('bulletsLeft');
+        const targetTracker = document.getElementById('targetTracker');
+        
+        const modeSelectScreen = document.getElementById('modeSelectScreen');
+        const duckHuntBtn = document.getElementById('duckHuntBtn');
+        const clayPigeonBtn = document.getElementById('clayPigeonBtn');
+
+        const startScreen = document.getElementById('startScreen');
+        const startScreenTitle = document.getElementById('startScreenTitle');
+        const startScreenDesc = document.getElementById('startScreenDesc');
+        const startBtn = document.getElementById('startBtn');
+
+        const bannerScreen = document.getElementById('bannerScreen');
+        const bannerTitle = document.getElementById('bannerTitle');
+        const bannerSub = document.getElementById('bannerSub');
+        const nextLevelBtn = document.getElementById('nextLevelBtn');
+        const uiElement = document.getElementById('ui');
+        const instructionsElement = document.getElementById('instructions');
+        const modeTitleLabel = document.getElementById('modeTitleLabel');
+
+        let gameMode = 'duck'; // 'duck' or 'clay'
+
+        function initTargetTracker() {
+            targetTracker.innerHTML = '';
+            for (let i = 0; i < 10; i++) {
+                let dot = document.createElement('div');
+                dot.className = 'tracker-dot';
+                dot.id = `dot-${i}`;
+                targetTracker.appendChild(dot);
+            }
+        }
+        initTargetTracker();
+
+        function updateTrackerDisplay() {
+            for (let i = 0; i < 10; i++) {
+                let dot = document.getElementById(`dot-${i}`);
+                if (dot) {
+                    if (i < levelHits) {
+                        dot.className = 'tracker-dot hit'; 
+                    } else {
+                        dot.className = 'tracker-dot'; 
+                    }
+                }
+            }
+        }
+
+        function updateLivesDisplay() {
+            let hearts = '';
+            for (let i = 0; i < lives; i++) {
+                hearts += '❤️ ';
+            }
+            livesDisplay.textContent = hearts.trim() || '💔 (None)';
+        }
+
+        function updateBulletsDisplay() {
+            bulletsLeftEl.textContent = bulletsLeft;
+        }
+
+        let audioCtx = null;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playGunSound() {
+            if (!audioCtx) return;
+            try {
+                let bufferSize = audioCtx.sampleRate * 0.2;
+                let buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                let output = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    output[i] = Math.random() * 2 - 1;
+                }
+
+                let whiteNoise = audioCtx.createBufferSource();
+                whiteNoise.buffer = buffer;
+
+                let filter = audioCtx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(800, audioCtx.currentTime);
+                filter.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.2);
+
+                let gainNode = audioCtx.createGain();
+                gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+
+                whiteNoise.connect(filter);
+                filter.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                whiteNoise.start();
+            } catch (e) {}
+        }
+
+        function playCheerSound() {
+            if (!audioCtx) return;
+            try {
+                let now = audioCtx.currentTime;
+                let notes = [523.25, 659.25, 783.99, 1046.50]; 
+                notes.forEach((freq, index) => {
+                    let osc = audioCtx.createOscillator();
+                    let gain = audioCtx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, now + (index * 0.1));
+                    
+                    gain.gain.setValueAtTime(0.2, now + (index * 0.1));
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + (index * 0.1) + 0.4);
+
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+
+                    osc.start(now + (index * 0.1));
+                    osc.stop(now + (index * 0.1) + 0.4);
+                });
+            } catch (e) {}
+        }
+
+        function playExtraLifeSound() {
+            if (!audioCtx) return;
+            try {
+                let now = audioCtx.currentTime;
+                let notes = [440, 554.37, 659.25, 880]; 
+                notes.forEach((freq, index) => {
+                    let osc = audioCtx.createOscillator();
+                    let gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now + (index * 0.08));
+                    
+                    gain.gain.setValueAtTime(0.25, now + (index * 0.08));
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + (index * 0.08) + 0.3);
+
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+
+                    osc.start(now + (index * 0.08));
+                    osc.stop(now + (index * 0.08) + 0.3);
+                });
+            } catch (e) {}
+        }
+
+        function playTargetSound() {
+            if (!audioCtx) return;
+            try {
+                let now = audioCtx.currentTime;
+                let osc = audioCtx.createOscillator();
+                let gain = audioCtx.createGain();
+
+                if (gameMode === 'duck') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(360, now);
+                    osc.frequency.exponentialRampToValueAtTime(200, now + 0.25);
+                } else {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(600, now);
+                    osc.frequency.exponentialRampToValueAtTime(300, now + 0.15);
+                }
+
+                gain.gain.setValueAtTime(0.12, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + (gameMode === 'duck' ? 0.25 : 0.15));
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start(now);
+                osc.stop(now + (gameMode === 'duck' ? 0.25 : 0.15));
+            } catch (e) {}
+        }
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            initClouds();
+            initTrees();
+            initRangeTrees();
+        }
+        window.addEventListener('resize', resize);
+
+        let score = 0;
+        let lives = 3;
+        let level = 1;
+        let levelHits = 0; 
+        let isPlaying = false;
+        let targets = [];
+        let spawnTimer = 0;
+        let spawnInterval = 140;
+        let speedMultiplier = 1.0;
+        let bulletsLeft = 2;
+        let lastShotTime = 0;
+        const shotCooldown = 400; 
+
+        let clouds = [];
+        function initClouds() {
+            clouds = [];
+            for (let i = 0; i < 5; i++) {
+                clouds.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * (canvas.height * 0.35),
+                    scale: 0.5 + Math.random() * 1.5,
+                    speed: 0.15 + Math.random() * 0.25
+                });
+            }
+        }
+
+        let horizonTrees = [];
+        function initTrees() {
+            horizonTrees = [];
+            let spacing = 18;
+            let count = Math.ceil(canvas.width / spacing) + 10;
+            for (let i = 0; i < count; i++) {
+                horizonTrees.push({
+                    x: i * spacing + (Math.random() * 6 - 3),
+                    height: 25 + Math.random() * 35,
+                    width: 12 + Math.random() * 8
+                });
+            }
+        }
+
+        let rangeTrees = [];
+        function initRangeTrees() {
+            rangeTrees = [];
+            let steps = 10;
+            let horizonY = canvas.height * 0.55;
+            let groundBottom = canvas.height;
+
+            for (let i = 0; i < steps; i++) {
+                let ratio = i / (steps - 1); 
+                let yPos = horizonY + ratio * (groundBottom - horizonY) + (Math.random() * 20 - 10);
+                let scale = 0.35 + ratio * 3.2; 
+                let spreadX = ratio * (canvas.width * 0.46) + (Math.random() * 40 - 20);
+
+                let shapeTypeLeft = i % 2;
+                let shapeTypeRight = (i + 1) % 2;
+
+                rangeTrees.push({
+                    x: (canvas.width * 0.43) - spreadX,
+                    y: yPos,
+                    height: (120 + Math.random() * 60) * scale,
+                    width: (50 + Math.random() * 25) * scale,
+                    shape: shapeTypeLeft,
+                    color: `rgb(${18 + Math.floor(ratio * 10)}, ${58 + Math.floor(ratio * 20)}, ${42 + Math.floor(ratio * 15)})`
+                });
+
+                rangeTrees.push({
+                    x: (canvas.width * 0.57) + spreadX,
+                    y: yPos,
+                    height: (120 + Math.random() * 60) * scale,
+                    width: (50 + Math.random() * 25) * scale,
+                    shape: shapeTypeRight,
+                    color: `rgb(${18 + Math.floor(ratio * 10)}, ${58 + Math.floor(ratio * 20)}, ${42 + Math.floor(ratio * 15)})`
+                });
+            }
+
+            rangeTrees.sort((a, b) => a.y - b.y);
+        }
+
+        initClouds();
+        initTrees();
+        initRangeTrees();
+        resize();
+
+        class ShootableTarget {
+            constructor(isFast) {
+                this.isFast = isFast;
+
+                if (gameMode === 'clay') {
+                    this.startX = canvas.width / 2 + (Math.random() * 60 - 30);
+                    this.startY = canvas.height - 40;
+                    this.targetX = 50 + Math.random() * (canvas.width - 100);
+                    this.targetY = canvas.height * 0.15 + Math.random() * (canvas.height * 0.25);
+                    this.x = this.startX;
+                    this.y = this.startY;
+                    this.progress = 0;
+                    let baseSpeed = 0.0035 + Math.random() * 0.003; 
+                    if (this.isFast) baseSpeed *= 1.4;
+                    this.speed = baseSpeed * speedMultiplier * 1.5;
+                } else {
+                    let edgeType = Math.random();
+                    if (edgeType < 0.45) {
+                        this.startX = -80;
+                        this.startY = Math.random() * (canvas.height * 0.4);
+                    } else if (edgeType < 0.9) {
+                        this.startX = canvas.width + 80;
+                        this.startY = Math.random() * (canvas.height * 0.4);
+                    } else {
+                        this.startX = Math.random() * canvas.width;
+                        this.startY = -80;
+                    }
+                    this.targetX = 50 + Math.random() * (canvas.width - 100);
+                    this.targetY = 40 + Math.random() * (canvas.height * 0.35);
+                    this.x = this.startX;
+                    this.y = this.startY;
+                    this.progress = 0;
+                    let baseSpeed = 0.002 + Math.random() * 0.0025;
+                    if (this.isFast) baseSpeed *= 1.4; 
+                    this.speed = baseSpeed * speedMultiplier * 1.5;
+                }
+
+                this.isDead = false;
+                this.escaped = false;
+                this.hasShiftedDirection = false;
+                this.wingPhase = Math.random() * Math.PI * 2;
+                this.rotation = Math.random() * Math.PI * 2;
+            }
+
+            update() {
+                if (this.isDead) {
+                    this.y += 14; 
+                    this.x += 1;
+                    if (gameMode === 'clay') {
+                        this.rotation += 0.15;
+                    }
+                    if (this.y > canvas.height + 50) {
+                        return true;
+                    }
+                    return false;
+                }
+
+                if (gameMode === 'duck') {
+                    if (!this.hasShiftedDirection && this.progress >= 0.45 && this.progress <= 0.55) {
+                        if (Math.random() < 0.75) { 
+                            this.targetX = 50 + Math.random() * (canvas.width - 100);
+                            this.targetY = 40 + Math.random() * (canvas.height * 0.35);
+                            this.startX = this.x;
+                            this.startY = this.y;
+                            this.progress = 0;
+                        }
+                        this.hasShiftedDirection = true;
+                    }
+                }
+
+                this.progress += this.speed;
+                this.wingPhase += 0.35;
+                this.rotation += 0.05;
+
+                this.x = this.startX + (this.targetX - this.startX) * this.progress;
+                
+                if (gameMode === 'duck') {
+                    this.y = this.startY + (this.targetY - this.startY) * this.progress + Math.sin(this.progress * Math.PI * 4) * 12;
+                } else {
+                    this.y = this.startY + (this.targetY - this.startY) * this.progress;
+                }
+
+                if (this.progress >= 1.0) {
+                    this.escaped = true;
+                    return true;
+                }
+                return false;
+            }
+
+            draw() {
+                ctx.save();
+                let scale = gameMode === 'clay' ? (0.3 + 0.9 * this.progress) : (0.8 + (0.4 * (1 - Math.abs(this.progress - 0.5) * 2))); 
+                ctx.translate(this.x, this.y);
+
+                if (gameMode === 'duck') {
+                    if (this.isDead) {
+                        ctx.rotate(Math.PI);
+                        ctx.scale(0.8, 0.8);
+                    } else {
+                        let movingRight = this.targetX > this.startX;
+                        let dir = movingRight ? 1 : -1;
+                        ctx.scale(dir, 1);
+                    }
+
+                    let bodyWidth = 32 * scale;
+                    let bodyHeight = 16 * scale;
+
+                    ctx.lineWidth = 3;
+                    ctx.strokeStyle = '#111';
+
+                    ctx.fillStyle = this.isFast ? '#00d2d3' : '#ffffff';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 4 * scale, bodyWidth * 0.6, bodyHeight * 0.7, 0.1, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#00b894';
+                    ctx.beginPath();
+                    ctx.arc(bodyWidth * 0.55, -bodyHeight * 0.6, bodyHeight * 0.65, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(bodyWidth * 0.65, -bodyHeight * 0.75, 5 * scale, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#111';
+                    ctx.beginPath();
+                    ctx.arc(bodyWidth * 0.67, -bodyHeight * 0.75, 2 * scale, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#ff9f43';
+                    ctx.beginPath();
+                    ctx.moveTo(bodyWidth * 0.85, -bodyHeight * 0.7);
+                    ctx.lineTo(bodyWidth * 1.25, -bodyHeight * 0.55);
+                    ctx.lineTo(bodyWidth * 0.85, -bodyHeight * 0.4);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+
+                    let wingOffsetY = Math.sin(this.wingPhase) * (14 * scale);
+                    ctx.fillStyle = this.isFast ? '#01a3a4' : '#f1f2f6';
+                    ctx.beginPath();
+                    ctx.ellipse(-bodyWidth * 0.1, wingOffsetY * 0.5, bodyWidth * 0.35, bodyHeight * 0.45, 0.3, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+
+                } else {
+                    ctx.scale(scale, scale);
+                    if (this.isDead) {
+                        ctx.rotate(this.rotation);
+                    }
+                    
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = '#333';
+                    
+                    ctx.fillStyle = this.isFast ? '#e67e22' : '#d35400';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, 24, 10, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#f39c12';
+                    ctx.beginPath();
+                    ctx.ellipse(0, -3, 12, 6, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                }
+
+                ctx.restore();
+            }
+
+            getCurrentRadius() {
+                let scale = gameMode === 'clay' ? (0.3 + 0.9 * this.progress) : 1.0;
+                return 32 * scale;
+            }
+        }
+
+        function spawnTargetPair() {
+            let isFast = Math.random() < 0.25;
+            let target1 = new ShootableTarget(isFast);
+            let target2 = new ShootableTarget(isFast);
+            target2.progress -= (0.15 + Math.random() * 0.15);
+            targets.push(target1, target2);
+            bulletsLeft = 2;
+            updateBulletsDisplay();
+            playTargetSound();
+        }
+
+        function drawDistantTrees() {
+            let horizonY = canvas.height * 0.55;
+            ctx.fillStyle = '#1b4d3e'; 
+            horizonTrees.forEach(tree => {
+                ctx.beginPath();
+                ctx.moveTo(tree.x, horizonY - tree.height);
+                ctx.lineTo(tree.x - tree.width / 2, horizonY);
+                ctx.lineTo(tree.x + tree.width / 2, horizonY);
+                ctx.closePath();
+                ctx.fill();
+            });
+        }
+
+        function drawRangeTrees() {
+            rangeTrees.forEach(tree => {
+                ctx.fillStyle = tree.color;
+                if (tree.shape === 0) {
+                    ctx.beginPath();
+                    ctx.moveTo(tree.x, tree.y - tree.height);
+                    ctx.lineTo(tree.x - tree.width / 2, tree.y + (tree.height * 0.2));
+                    ctx.lineTo(tree.x + tree.width / 2, tree.y + (tree.height * 0.2));
+                    ctx.closePath();
+                    ctx.fill();
+                } else {
+                    let h = tree.height;
+                    let w = tree.width;
+                    let y = tree.y;
+                    ctx.beginPath();
+                    ctx.moveTo(tree.x, y - h);
+                    ctx.lineTo(tree.x - w * 0.4, y - h * 0.5);
+                    ctx.lineTo(tree.x + w * 0.4, y - h * 0.5);
+                    ctx.closePath();
+                    ctx.moveTo(tree.x, y - h * 0.65);
+                    ctx.lineTo(tree.x - w * 0.7, y - h * 0.25);
+                    ctx.lineTo(tree.x + w * 0.7, y - h * 0.25);
+                    ctx.closePath();
+                    ctx.moveTo(tree.x, y - h * 0.4);
+                    ctx.lineTo(tree.x - w / 2, y + (h * 0.15));
+                    ctx.lineTo(tree.x + w / 2, y + (h * 0.15));
+                    ctx.closePath();
+                    ctx.fill();
+                }
+            });
+        }
+
+        function drawFirstPersonGun() {
+            ctx.save();
+            let cx = canvas.width / 2;
+            let cy = canvas.height;
+
+            ctx.fillStyle = '#2f3542'; 
+            ctx.strokeStyle = '#1e272e';
+            ctx.lineWidth = 3;
+
+            ctx.beginPath();
+            ctx.moveTo(cx - 30, cy);
+            ctx.lineTo(cx - 12, cy - 240); 
+            ctx.lineTo(cx + 12, cy - 240); 
+            ctx.lineTo(cx + 30, cy);       
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#718093';
+            ctx.fillRect(cx - 2, cy - 240, 4, 240);
+
+            ctx.fillStyle = '#111';
+            ctx.beginPath();
+            ctx.ellipse(cx, cy - 240, 10, 3, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#8B4513'; 
+            ctx.strokeStyle = '#5c2d0c';
+            ctx.lineWidth = 4;
+
+            ctx.beginPath();
+            ctx.moveTo(cx - 45, cy);
+            ctx.lineTo(cx - 30, cy - 120);
+            ctx.lineTo(cx + 30, cy - 120);
+            ctx.lineTo(cx + 45, cy);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#111';
+            ctx.beginPath();
+            ctx.arc(cx, cy - 40, 15, 0, Math.PI);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        function handleTouch(clientX, clientY) {
+            if (!isPlaying) return;
+            if (bulletsLeft <= 0) return;
+            if (targets.length === 0) return;
+
+            let currentTime = Date.now();
+            if (currentTime - lastShotTime < shotCooldown) return;
+            lastShotTime = currentTime;
+
+            const rect = canvas.getBoundingClientRect();
+            const x = clientX - rect.left;
+            const y = clientY - rect.top;
+
+            bulletsLeft--;
+            updateBulletsDisplay();
+            playGunSound();
+
+            let targetsHitThisShot = 0;
+
+            targets.forEach(target => {
+                if (target.isDead || target.escaped) return;
+                let r = target.getCurrentRadius();
+                let dx = x - target.x;
+                let dy = y - target.y; 
+                let distToTarget = Math.hypot(dx, dy);
+
+                if (distToTarget <= r + 25) {
+                    target.isDead = true; 
+                    score += target.isFast ? 250 : 150;
+                    scoreEl.textContent = score;
+                    createExplosion(target.x, target.y);
+
+                    levelHits++;
+                    hitsCountEl.textContent = levelHits;
+                    updateTrackerDisplay(); 
+
+                    targetsHitThisShot++;
+
+                    if (levelHits >= 10) {
+                        triggerLevelComplete();
+                    }
+                }
+            });
+
+            if (targetsHitThisShot >= 2 && lives < 3) {
+                lives = Math.min(3, lives + 1);
+                updateLivesDisplay();
+                playExtraLifeSound();
+            }
+        }
+
+        canvas.addEventListener('click', (e) => {
+            handleTouch(e.clientX, e.clientY);
+        });
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            handleTouch(touch.clientX, touch.clientY);
+        }, { passive: false });
+
+        let particles = [];
+        function createExplosion(x, y) {
+            let sparkColor = gameMode === 'duck' ? (Math.random() > 0.5 ? '#00b894' : '#ff9f43') : '#f39c12';
+            for (let i = 0; i < 18; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 10,
+                    vy: (Math.random() - 0.5) * 10,
+                    alpha: 1,
+                    color: sparkColor
+                });
+            }
+        }
+
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.alpha -= 0.04;
+                if (p.alpha <= 0) {
+                    particles.splice(i, 1);
+                } else {
+                    ctx.save();
+                    ctx.globalAlpha = p.alpha;
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+        }
+
+        function drawClouds() {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            clouds.forEach(cloud => {
+                cloud.x -= cloud.speed;
+                if (cloud.x < -150) cloud.x = canvas.width + 150;
+
+                ctx.save();
+                ctx.translate(cloud.x, cloud.y);
+                ctx.scale(cloud.scale, cloud.scale);
+                ctx.beginPath();
+                ctx.arc(0, 0, 30, 0, Math.PI * 2);
+                ctx.arc(25, -10, 25, 0, Math.PI * 2);
+                ctx.arc(50, 0, 30, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+        }
+
+        function gameLoop() {
+            if (!isPlaying) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            drawClouds();
+            drawDistantTrees();
+
+            ctx.fillStyle = '#218c74';
+            ctx.fillRect(0, canvas.height * 0.55, canvas.width, canvas.height * 0.45);
+
+            drawRangeTrees();
+
+            if (targets.length === 0) {
+                spawnTimer++;
+                if (spawnTimer >= spawnInterval) {
+                    spawnTargetPair();
+                    spawnTimer = 0;
+                }
+            }
+
+            for (let i = targets.length - 1; i >= 0; i--) {
+                let target = targets[i];
+                let remove = target.update();
+                if (remove) {
+                    if (target.escaped && !target.isDead) {
+                        lives--;
+                        updateLivesDisplay();
+                        if (lives <= 0) {
+                            endGame();
+                            return;
+                        }
+                    }
+                    targets.splice(i, 1);
+                } else {
+                    target.draw();
+                }
+            }
+
+            updateParticles();
+            drawFirstPersonGun();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function prepareGame(mode) {
+            gameMode = mode;
+            modeSelectScreen.style.display = 'none';
+            startScreen.style.display = 'flex';
+
+            if (gameMode === 'duck') {
+                startScreenTitle.textContent = "CARTOON DUCK SHOOT";
+                modeTitleLabel.textContent = "Duck Level";
+            } else {
+                startScreenTitle.textContent = "CLAY PIGEON SHOOTING";
+                modeTitleLabel.textContent = "Clay Level";
+            }
+        }
+
+        function startGame() {
+            initAudio();
+            score = 0;
+            lives = 3;
+            level = 1;
+            levelHits = 0;
+            speedMultiplier = 1.0;
+            spawnInterval = 140;
+            bulletsLeft = 2;
+            scoreEl.textContent = score;
+            levelEl.textContent = level;
+            hitsCountEl.textContent = levelHits;
+            updateLivesDisplay();
+            updateBulletsDisplay();
+            initTargetTracker();
+            targets = [];
+            particles = [];
+            isPlaying = true;
+            
+            modeSelectScreen.style.display = 'none';
+            startScreen.style.display = 'none';
+            bannerScreen.style.display = 'none';
+            uiElement.style.display = 'flex';
+            instructionsElement.style.display = 'block';
+
+            gameLoop();
+        }
+
+        function triggerLevelComplete() {
+            isPlaying = false;
+            let bonusText = "";
+            if (level % 5 === 0 && lives < 3) {
+                lives = Math.min(3, lives + 1);
+                updateLivesDisplay();
+                bonusText = `<br><span style="color: #2ecc71;">Milestone Reached! +1 Extra Life! ❤️</span>`;
+                playExtraLifeSound();
+            } else {
+                playCheerSound();
+            }
+
+            bannerTitle.textContent = `LEVEL ${level} COMPLETE!`;
+            bannerSub.innerHTML = `Great shooting! Advancing to Level ${level + 1} (+10% Speed).${bonusText}`;
+            bannerScreen.style.display = 'flex';
+        }
+
+        function startNextLevel() {
+            initAudio();
+            level++;
+            levelHits = 0;
+            speedMultiplier *= 1.10; 
+            levelEl.textContent = level;
+            hitsCountEl.textContent = levelHits;
+            bulletsLeft = 2;
+            updateBulletsDisplay();
+            initTargetTracker();
+            targets = [];
+            particles = [];
+            bannerScreen.style.display = 'none';
+            isPlaying = true;
+            gameLoop();
+        }
+
+        function endGame() {
+            isPlaying = false;
+            uiElement.style.display = 'none';
+            instructionsElement.style.display = 'none';
+            modeSelectScreen.style.display = 'flex';
+            bannerScreen.style.display = 'none';
+            startScreen.style.display = 'none';
+        }
+
+        duckHuntBtn.addEventListener('click', () => prepareGame('duck'));
+        duckHuntBtn.addEventListener('touchstart', (e) => { e.preventDefault(); prepareGame('duck'); });
+
+        clayPigeonBtn.addEventListener('click', () => prepareGame('clay'));
+        clayPigeonBtn.addEventListener('touchstart', (e) => { e.preventDefault(); prepareGame('clay'); });
+
+        startBtn.addEventListener('click', startGame);
+        startBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startGame();
+        });
+
+        nextLevelBtn.addEventListener('click', startNextLevel);
+        nextLevelBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startNextLevel();
+        });
+    </script>
+</body>
+</html>
